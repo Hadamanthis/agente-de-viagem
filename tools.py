@@ -3,7 +3,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "knowledge_base_search",
-            "description": "SEMPRE use esta ferramenta antes de responder qualquer pergunta sobre pacotes, destinos, preços, políticas ou serviços da ViajarBrasil. Busca informações na base de dados interna da agência.",
+            "description": "Busca informações sobre pacotes, destinos, preços e políticas da ViajarBrasil na base de dados interna da agência.",
             "parameters": {
                 "type": "object",
                 "properties": {

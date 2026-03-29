@@ -20,82 +20,63 @@ class LLMClient:
         )
 
     def call(self, user_prompt, messages):
-        """ Se comunica com a LLM a partir da última mensagem do usuário e do histórico de mensagens """
-
         messages = list(messages)
-
         messages.append({"role": "user", "content": user_prompt})
 
-        full_response = [
+        full_messages = [
             {"role": "system", "content": self.system_prompt},
             *messages
         ]
 
+        # Primeira chamada — força knowledge base
         response_raw = self.client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=full_response,
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=full_messages,
             tools=self.tools,
-            tool_choice={
-                "type": "function",
-                "function": {"name": "knowledge_base_search"}
-            }
+            tool_choice="auto"
         )
 
-        response = response_raw.choices[0].message.content
-        print(f"DEBUG - response: {response}")
-        print(f"DEBUG - tool_calls: {response_raw.choices[0].message.tool_calls}")
+        while True:
+            response = response_raw.choices[0].message.content
 
-        # Se response é None, então a LLM enviou tools (function calling)
-        if response is None:
+            # Modelo respondeu diretamente — fim do loop
+            if response is not None:
+                break
 
-            # Adiciona ao histórico que o modelo pediu a necessidade de chamar alguma função
+            # Adiciona decisão do modelo ao histórico
             messages.append({
                 "role": "assistant",
                 "content": None,
                 "tool_calls": response_raw.choices[0].message.tool_calls
             })
 
+            # Executa cada tool chamada pelo modelo
             for tool in response_raw.choices[0].message.tool_calls:
                 llm_query = json.loads(tool.function.arguments)['query']
 
-                # Verificando se precisa chamar o vector database
                 if tool.function.name == "knowledge_base_search":
-                    kb_context = self.knowledge_base.search(llm_query, n_results=2)
+                    context = self.knowledge_base.search(llm_query, n_results=2)
+                elif tool.function.name == "web_search":
+                    context = self.web_search.search(llm_query, max_results=3)
 
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool.id,
-                        "content": str(kb_context)
-                    })
+                # Adiciona resultado da tool ao histórico
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool.id,
+                    "name": tool.function.name,
+                    "content": str(context)
+                })
 
-                # Verificando se precisa realizar uma busca na web
-                if tool.function.name == "web_search":
-                    ws_context = self.web_search.search(llm_query, max_results=3)
+            # Reconstrói full_messages uma vez antes da próxima chamada
+            full_messages = [{"role": "system", "content": self.system_prompt}, *messages]
 
-                    messages.append({
-                        "role": "tool",
-                        "tool_call_id": tool.id,
-                        "content": str(ws_context)
-                    })
-
-            full_response = [
-                {"role": "system", "content": self.system_prompt},
-                *messages
-            ]
-
-            # Chamando a LLM com o novo contexto
+            # Próximas chamadas — modelo decide livremente
             response_raw = self.client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=full_response
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                messages=full_messages,
+                tools=self.tools,
+                tool_choice="auto"
             )
 
-            response = response_raw.choices[0].message.content
-
         messages.append({"role": "assistant", "content": response})
-
         return response, messages
-
-
-
-
-

@@ -1,14 +1,18 @@
 import chromadb
 from pathlib import Path
+import logging
 
 class KnowledgeBase:
     def __init__(self, knowledge_base_path, vector_store_path="./vector_store"):
         self.knowledge_base_path = knowledge_base_path
         self.client = chromadb.PersistentClient(path=vector_store_path)
         self.collection = self.client.get_or_create_collection(name="agente-de-viagens")
+        self.logger = logging.getLogger(__name__)
 
     def index(self):
         """ Responsável por indexar a base de conhecimento em um vector database."""
+
+        self.logger.info("Requisição para indexação da knowledge base")
 
         knowledge_dir = Path(self.knowledge_base_path)
 
@@ -26,8 +30,12 @@ class KnowledgeBase:
                         documents=[sentence]
                     )
 
+        self.logger.info("Indexação da knowledge base concluída com sucesso.")
+
     def search(self, prompt_history, n_results=1):
         """ Responsável por buscar os contextos baseados nos inputs do usuário. """
+
+        self.logger.info("Requisição para busca na knowledge base realizada")
 
         query_results = self.collection.query(query_texts=list(prompt_history), n_results=n_results)
 

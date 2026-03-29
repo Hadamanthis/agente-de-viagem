@@ -1,4 +1,4 @@
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 
 class WebSearch:
 
@@ -7,4 +7,7 @@ class WebSearch:
         """ Retorna a busca na web com contexto relevante a partir do prompt"""
 
         with DDGS() as ddgs:
-            return ddgs.text(prompt, max_results=max_results)
+            results = ddgs.text(prompt, max_results=max_results, region="br-pt")
+            if not results:
+                results = ddgs.text(prompt, max_results=max_results)
+            return results

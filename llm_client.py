@@ -42,7 +42,7 @@ class LLMClient:
                 tool_choice="auto"
             )
 
-            self.logger.info("Primeira chamada a LLM feita com sucesso")
+            self.logger.info("Comunicação com LLM feita com sucesso")
 
             while True:
                 response = response_raw.choices[0].message.content
@@ -52,6 +52,7 @@ class LLMClient:
                     break
 
                 self.logger.info("LLM requisita mais informações.")
+                self.logger.info(f"Tool chamada: {tool.function.name} | Query: {llm_query}")
 
                 # Adiciona decisão do modelo ao histórico
                 messages.append({

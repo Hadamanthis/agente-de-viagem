@@ -3,12 +3,20 @@ from knowledge_base import KnowledgeBase
 from web_search import WebSearch
 from tools import tools
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
 import config
 import logging
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Carregando comportamento base da LLM
 system_prompt = Path("./system_prompt.txt").read_text(encoding="utf-8")
@@ -24,6 +32,10 @@ kb_client.index()
 llm = LLMClient(system_prompt, tools, kb_client, ws_client)
 
 # Logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
+)
 logger = logging.getLogger(__name__)
 
 # Definição da resposta do endpoint chat
@@ -40,6 +52,8 @@ def health_check():
 @app.post("/chat")
 def chat(request: ChatRequest):
     """ Comunicação Stateless com a LLM """
+
+    print("CHEGOU REQUISIÇÃO", request.user_message)
 
     logger.info("Requisição ao POST '/chat'.")
 

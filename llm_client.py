@@ -39,10 +39,10 @@ class LLMClient:
                 model=config.MODEL,
                 messages=full_messages,
                 tools=self.tools,
-                tool_choice="auto"
+                tool_choice={"type": "function", "function": {"name": "knowledge_base_search"}}
             )
 
-            self.logger.info("Comunicação com LLM feita com sucesso")
+            self.logger.info("Primeira comunicação com LLM feita com sucesso")
 
             while True:
                 response = response_raw.choices[0].message.content
@@ -52,7 +52,6 @@ class LLMClient:
                     break
 
                 self.logger.info("LLM requisita mais informações.")
-                self.logger.info(f"Tool chamada: {tool.function.name} | Query: {llm_query}")
 
                 # Adiciona decisão do modelo ao histórico
                 messages.append({
@@ -63,7 +62,10 @@ class LLMClient:
 
                 # Executa cada tool chamada pelo modelo
                 for tool in response_raw.choices[0].message.tool_calls:
+
                     llm_query = json.loads(tool.function.arguments)['query']
+
+                    self.logger.info(f"Tool chamada: {tool.function.name} | Query: {llm_query}")
 
                     if tool.function.name == "knowledge_base_search":
                         context = self.knowledge_base.search(llm_query, n_results=config.KB_N_RESULTS)
@@ -89,10 +91,20 @@ class LLMClient:
                     tool_choice="auto"
                 )
 
-        except openai.APIError:
+
+        except openai.APIError as e:
+
+            self.logger.error(f"Erro da API da LLM: {e}")
+
             return "O Marvin está indisponível no momento, por favor, tente mais tarde", messages
 
-        self.logger.info("Chamada a LLM feita com sucesso.")
+        except Exception as e:
+
+            self.logger.error(f"Erro inesperado no LLMClient: {e}")
+
+            return "O Marvin está indisponível no momento, por favor, tente mais tarde", messages
+
+        self.logger.info("Resposta da LLM gerada com sucesso.")
 
         messages.append({"role": "assistant", "content": response})
         return response, messages

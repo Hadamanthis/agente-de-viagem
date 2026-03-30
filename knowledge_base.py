@@ -1,6 +1,7 @@
 import chromadb
 from pathlib import Path
 import logging
+import hashlib
 
 class KnowledgeBase:
     def __init__(self, knowledge_base_path, vector_store_path="./vector_store"):
@@ -18,16 +19,29 @@ class KnowledgeBase:
 
         # Para cada arquivo
         for file in knowledge_dir.glob("*.txt"):
+
             with open(file, "r", encoding="utf-8") as f:
 
-                # Salva cada sentença individualmente
                 file_content = f.read()
+
+                file_hash = hashlib.md5(file_content.encode()).hexdigest()
+
+                existing = self.collection.get(ids=[file.stem + "_0"])
+
+                # Se já indexou o primeiro chunk do arquivo e o hash é igual, arquivo já foi indexado
+                if existing["ids"]:
+                    existing_hash = existing["metadatas"][0]["hash"]
+                    if file_hash == existing_hash:
+                        continue
+
+                # Salva cada sentença individualmente
                 for index, sentence in enumerate(file_content.split("\n\n")):
                     sentence_id = file.stem + '_' + str(index)
 
                     self.collection.upsert(
                         ids=[sentence_id],
-                        documents=[sentence]
+                        documents=[sentence],
+                        metadatas=[{"hash": file_hash}]
                     )
 
         self.logger.info("Indexação da knowledge base concluída com sucesso.")

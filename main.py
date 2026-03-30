@@ -5,7 +5,6 @@ from tools import tools
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pathlib import Path
-import json
 import config
 import logging
 
